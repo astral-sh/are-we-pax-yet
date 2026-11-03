@@ -11,11 +11,12 @@ as pax-compatible. The JSON results record the specific format.
 ## Development
 
 ```sh
-uv run --script generate.py
+uv run --locked --script generate.py
 uv run --no-project python -m http.server --bind 127.0.0.1 --directory build 8000
 ```
 
 Open [localhost:8000](http://localhost:8000/). Pass `--number 12` to generate a smaller sample.
+Refresh the script lockfile with `uv lock --script generate.py` after changing its inline metadata.
 
 ```sh
 uv run --locked ruff check

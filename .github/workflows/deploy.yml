@@ -28,7 +28,12 @@ jobs:
         with:
           version: '0.13.6'
           python-version: '3.14'
-          cache-dependency-glob: uv.lock
+          cache-dependency-glob: |
+            uv.lock
+            generate.py.lock
+
+      - name: Check script lockfile
+        run: uv lock --check --script generate.py
 
       - name: Lint and check formatting
         run: |
@@ -40,7 +45,7 @@ jobs:
 
       - name: Build site
         if: github.ref == 'refs/heads/main'
-        run: uv run --script generate.py
+        run: uv run --locked --script generate.py
 
       - name: Upload site
         if: github.ref == 'refs/heads/main'
