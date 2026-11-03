@@ -228,13 +228,15 @@ def render_full_page(results, ranking_count, dates):
         name = escape(row["project"])
         project = quote(row["project"], safe="")
         version = "—"
-        status = "No sdist"
+        status = '<span class="badge text-bg-secondary">No sdist</span>'
         if package is not None:
             kind = package["format"]
             counts[kind] += 1
             version = escape(package["version"])
             css_class, _, status = STYLES[kind]
-            if kind != "other":
+            if package["filename"].lower().endswith(".zip"):
+                status = '<span class="badge text-bg-primary">ZIP sdist</span>'
+            elif kind != "other":
                 status = f'<span class="badge text-bg-{css_class}">{status}</span>'
 
         rows.append(
