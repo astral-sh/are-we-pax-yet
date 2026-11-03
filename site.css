@@ -183,6 +183,18 @@ a:hover {
     width: 21%;
 }
 
+.stats-table {
+    min-width: 44rem;
+}
+
+.stats-table thead th:nth-child(5) {
+    width: 7rem;
+}
+
+.stats-table thead th:last-child {
+    width: 6rem;
+}
+
 .results-table :is(th, td) {
     padding: .25rem;
     border-bottom: 1px solid var(--table-border);

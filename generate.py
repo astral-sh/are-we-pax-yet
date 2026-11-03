@@ -83,10 +83,11 @@ def latest_sdist(name):
         raise
 
     serial = project.get("last_serial")
+    files = project["urls"]
     sdist = max(
         (
             file
-            for file in project["urls"]
+            for file in files
             if file["packagetype"] == "sdist" and not file["yanked"]
         ),
         key=lambda file: (
@@ -97,14 +98,18 @@ def latest_sdist(name):
     )
     if sdist is None:
         return serial, None
+    released_at = min(
+        datetime.fromisoformat(file["upload_time_iso_8601"]) for file in files
+    )
     return serial, {
         "version": project["info"]["version"],
         "filename": sdist["filename"],
         "url": sdist["url"],
+        "released_at": released_at.astimezone(UTC).isoformat(),
     }
 
 
-def reusable_sdists(cache, rows):
+def reusable_sdists(cache, rows, cached_formats):
     ranked_names = {row["project"] for row in rows}
     entries = {
         name: (serial, sdist)
@@ -140,8 +145,17 @@ def reusable_sdists(cache, rows):
     for project in projects:
         name = separators.sub("-", project["name"]).lower()
         entry = entries.get(name)
-        if entry is not None and entry[0] == project.get("_last-serial"):
-            cached_sdists[name] = json.loads(entry[1])
+        if entry is None or entry[0] != project.get("_last-serial"):
+            continue
+        sdist = json.loads(entry[1])
+        # Backfill release dates only for entries that can appear in the stats.
+        if (
+            sdist is not None
+            and "released_at" not in sdist
+            and cached_formats.get(sdist["url"]) != "pax"
+        ):
+            continue
+        cached_sdists[name] = sdist
     return cached_sdists
 
 
@@ -244,7 +258,9 @@ def survey(number):
         cached_formats = dict(
             cache.execute("SELECT url, format FROM formats WHERE format != 'other'")
         )
-        cached_sdists = reusable_sdists(cache, rows) if number is None else {}
+        cached_sdists = (
+            reusable_sdists(cache, rows, cached_formats) if number is None else {}
+        )
         if number is None:
             print(
                 f"Reusing metadata for {len(cached_sdists):,} of {len(rows):,} ranked projects",
@@ -285,32 +301,45 @@ def survey(number):
     return results, len(rows)
 
 
+def render_archive_format(package):
+    if package is None:
+        return '<span class="format-chip missing">No sdist</span>'
+    if package["filename"].lower().endswith(".zip"):
+        return '<span class="format-chip zip">ZIP sdist</span>'
+    kind = package["format"]
+    css_class, _, label = STYLES[kind]
+    if kind == "other":
+        return label
+    return f'<span class="format-chip {css_class}">{label}</span>'
+
+
+def render_result_row(rank, name, cells):
+    project = quote(name, safe="")
+    name = escape(name)
+    return (
+        f'<tr id="project-{name}"><td>{rank:,}</td>'
+        '<th scope="row">'
+        f'<a href="https://pypi.org/project/{project}/">{name}</a> '
+        f'<a href="#project-{project}" aria-label="Permalink to {name}" title="Link to this row">#</a>'
+        f"</th>{cells}</tr>"
+    )
+
+
 def render_full_page(results, ranking_count, dates):
     rows = []
     counts = Counter()
     for rank, (row, package) in enumerate(results, start=1):
-        name = escape(row["project"])
-        project = quote(row["project"], safe="")
         version = "—"
-        status = '<span class="format-chip missing">No sdist</span>'
         if package is not None:
-            kind = package["format"]
-            counts[kind] += 1
+            counts[package["format"]] += 1
             version = escape(package["version"])
-            css_class, _, status = STYLES[kind]
-            if package["filename"].lower().endswith(".zip"):
-                status = '<span class="format-chip zip">ZIP sdist</span>'
-            elif kind != "other":
-                status = f'<span class="format-chip {css_class}">{status}</span>'
-
+        status = render_archive_format(package)
         rows.append(
-            f'<tr id="project-{name}"><td>{rank:,}</td>'
-            '<th scope="row">'
-            f'<a href="https://pypi.org/project/{project}/">{name}</a> '
-            f'<a href="#project-{project}" aria-label="Permalink to {name}" title="Link to this row">#</a>'
-            "</th>"
-            f"<td>{status}</td><td>{version}</td>"
-            f"<td>{row['download_count']:,}</td></tr>"
+            render_result_row(
+                rank,
+                row["project"],
+                f"<td>{status}</td><td>{version}</td><td>{row['download_count']:,}</td>",
+            )
         )
 
     coverage = (
@@ -324,6 +353,34 @@ def render_full_page(results, ranking_count, dates):
         sdist_count=f"{sdist_count:,}",
         pax_count=f"{counts['pax']:,}",
         pax_percent=f"{counts['pax'] / sdist_count:.1%}" if sdist_count else "0%",
+        rows="\n".join(rows),
+        **dates,
+    )
+
+
+def render_stats_page(results, now, dates):
+    releases = [
+        (datetime.fromisoformat(package["released_at"]), rank, package)
+        for rank, (_, package) in enumerate(results, start=1)
+        if package is not None and package["format"] != "pax"
+    ]
+    releases.sort(key=lambda release: release[0], reverse=True)
+    rows = []
+    for released_at, rank, package in releases:
+        age = max(0, (now - released_at).days)
+        status = render_archive_format(package)
+        version = escape(package["version"])
+        rows.append(
+            render_result_row(
+                rank,
+                package["name"],
+                f"<td>{status}</td><td>{version}</td>"
+                f'<td><time datetime="{released_at.isoformat()}">{released_at.date()}</time></td>'
+                f"<td>{age:,}</td>",
+            )
+        )
+    return Template((ROOT / "stats.html").read_text(encoding="utf-8")).substitute(
+        non_pax_count=f"{len(releases):,}",
         rows="\n".join(rows),
         **dates,
     )
@@ -366,12 +423,19 @@ def write_site(results, ranking_count, number, output):
         **dates,
     )
     full = render_full_page(results, ranking_count, dates)
+    stats = render_stats_page(results, now, dates)
+    wheel_data = [
+        {key: value for key, value in package.items() if key != "released_at"}
+        for package in packages
+    ]
 
     output.mkdir(parents=True, exist_ok=True)
     (output / "index.html").write_text(index, encoding="utf-8")
     (output / "full.html").write_text(full, encoding="utf-8")
+    (output / "stats.html").write_text(stats, encoding="utf-8")
     (output / "results.json").write_text(
-        json.dumps({"data": packages, "last_update": now.isoformat()}, indent=2) + "\n",
+        json.dumps({"data": wheel_data, "last_update": now.isoformat()}, indent=2)
+        + "\n",
         encoding="utf-8",
     )
     generate_svg_wheel(packages, output / "wheel.svg")

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en" class="results-page">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="site.css">
+    <link rel="icon" href="wheel.svg">
+    <title>Non-pax sdist stats · Are we pax yet? 📦</title>
+</head>
+<body>
+    <div class="container">
+        <main>
+            <h1>Are we pax yet? 📦</h1>
+            <p><a href="index.html">Back to the wheel</a> · <a href="full.html">Full 30-day results</a></p>
+            <h2 id="non-pax-stats">Non-pax sdist stats</h2>
+            <p>
+                This table lists GNU tar, ZIP, and unclassified sdists from the surveyed projects in the
+                30-day PyPI download ranking, newest releases first. Age is measured in whole days from
+                the first file upload PyPI lists for the release to the site's last update.
+            </p>
+            <p><strong>$non_pax_count non-pax or unclassified sdists.</strong></p>
+            <div class="table-scroll" role="region" aria-labelledby="non-pax-stats" tabindex="0">
+                <table class="results-table stats-table" aria-labelledby="non-pax-stats">
+                    <thead>
+                        <tr>
+                            <th scope="col">Rank</th>
+                            <th scope="col">Project</th>
+                            <th scope="col">Archive format</th>
+                            <th scope="col">Version</th>
+                            <th scope="col" aria-sort="descending">Released (UTC)</th>
+                            <th scope="col">Age (days)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+$rows
+                    </tbody>
+                </table>
+            </div>
+        </main>
+        <footer>
+            <p>Last updated <time datetime="$timestamp">$last_update</time>. (Updated daily.)</p>
+            <p>Built by <a href="https://astral.sh/">Astral</a>.</p>
+        </footer>
+    </div>
+</body>
+</html>
