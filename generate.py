@@ -236,8 +236,8 @@ def render_full_page(results, ranking_count, dates):
         rows.append(
             f'<tr><td class="text-end">{rank:,}</td>'
             f'<th scope="row" class="fw-normal"><a href="https://pypi.org/project/{project}/">{name}</a></th>'
-            f'<td class="text-end">{row["download_count"]:,}</td>'
-            f"<td>{version}</td><td>{status}</td></tr>"
+            f"<td>{status}</td><td>{version}</td>"
+            f'<td class="text-end">{row["download_count"]:,}</td></tr>'
         )
 
     coverage = (

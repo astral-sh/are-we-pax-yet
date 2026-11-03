@@ -6,6 +6,10 @@ a.btn:first-child{border-top-left-radius: 5px; border-top-right-radius: 5px;}
 a.btn:last-child{border-bottom-width: 1px; border-bottom-left-radius: 5px; border-bottom-right-radius: 5px;}
 object {max-width: 100%; height: auto; aspect-ratio: 1;}
 footer{text-align: center;}
+.results-table th[scope="row"] {
+    min-width: 8rem;
+    overflow-wrap: anywhere;
+}
 .text-default {
     color: #777;
 }
