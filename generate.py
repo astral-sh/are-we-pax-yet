@@ -7,6 +7,7 @@
 import argparse
 import gzip
 import json
+import re
 import sqlite3
 import tarfile
 import time
@@ -33,6 +34,7 @@ RANKING_URL = (
     "https://raw.githubusercontent.com/hugovk/top-pypi-packages/main/"
     "top-pypi-packages-30-days.min.json"
 )
+PYPI_INDEX_URL = "https://pypi.org/simple/"
 TO_CHART = 360
 WORKERS = 32
 CACHE_PATH = ROOT / ".sdist-formats-v2.sqlite"
@@ -70,15 +72,15 @@ def fetch(url, read, *, headers=None):
         time.sleep(2**attempt)
 
 
-def latest_sdist(row):
-    name = row["project"]
+def latest_sdist(name):
     try:
         project = fetch(f"https://pypi.org/pypi/{quote(name, safe='')}/json", json.load)
     except HTTPError as error:
         if error.code == 404:
-            return None
+            return None, None
         raise
 
+    serial = project.get("last_serial")
     sdist = max(
         (
             file
@@ -92,14 +94,53 @@ def latest_sdist(row):
         default=None,
     )
     if sdist is None:
-        return None
-    return {
-        "name": name,
-        "downloads": row["download_count"],
+        return serial, None
+    return serial, {
         "version": project["info"]["version"],
         "filename": sdist["filename"],
         "url": sdist["url"],
     }
+
+
+def reusable_sdists(cache, rows):
+    ranked_names = {row["project"] for row in rows}
+    entries = {
+        name: (serial, sdist)
+        for name, serial, sdist in cache.execute(
+            "SELECT name, serial, sdist FROM project_sdists WHERE serial IS NOT NULL"
+        )
+        if name in ranked_names
+    }
+    if not entries:
+        return {}
+
+    try:
+        projects = fetch(
+            PYPI_INDEX_URL,
+            json.load,
+            headers={"Accept": "application/vnd.pypi.simple.v1+json"},
+        )["projects"]
+    except (
+        OSError,
+        IncompleteRead,
+        EOFError,
+        ValueError,
+        KeyError,
+        zlib.error,
+    ) as error:
+        print(f"Could not read PyPI's project index: {error}", flush=True)
+        return {}
+
+    # Both PyPI APIs report the same project serial. Match it exactly so a
+    # stale project response cannot be stored under a newer index serial.
+    separators = re.compile(r"[-_.]+")
+    cached_sdists = {}
+    for project in projects:
+        name = separators.sub("-", project["name"]).lower()
+        entry = entries.get(name)
+        if entry is not None and entry[0] == project.get("_last-serial"):
+            cached_sdists[name] = json.loads(entry[1])
+    return cached_sdists
 
 
 def read_tar_header(source):
@@ -140,22 +181,32 @@ def tar_format(url):
     return "other"
 
 
-def inspect_project(row, cached_formats):
-    sdist = latest_sdist(row)
+def inspect_project(row, cached_formats, cached_sdists):
+    name = row["project"]
+    update = None
+    if name in cached_sdists:
+        sdist = cached_sdists[name]
+    else:
+        serial, sdist = latest_sdist(name)
+        update = (name, serial, json.dumps(sdist))
+
     if sdist is None:
-        return None
+        return None, update
 
     url = sdist["url"]
     kind = cached_formats.get(url)
     if kind is None:
         kind = tar_format(url) if sdist["filename"].endswith(".tar.gz") else "other"
     css_class, icon, label = STYLES[kind]
-    return sdist | {
+    package = sdist | {
+        "name": name,
+        "downloads": row["download_count"],
         "format": kind,
         "css_class": css_class,
         "icon": icon,
         "title": f"{sdist['filename']} — {label}",
     }
+    return package, update
 
 
 def survey(number):
@@ -171,12 +222,24 @@ def survey(number):
         cache.execute(
             "CREATE TABLE IF NOT EXISTS formats (url TEXT PRIMARY KEY, format TEXT NOT NULL)"
         )
+        cache.execute(
+            "CREATE TABLE IF NOT EXISTS project_sdists ("
+            "name TEXT PRIMARY KEY, serial INTEGER, sdist TEXT NOT NULL)"
+        )
         cached_formats = dict(
             cache.execute("SELECT url, format FROM formats WHERE format != 'other'")
         )
-        inspect = partial(inspect_project, cached_formats=cached_formats)
+        cached_sdists = reusable_sdists(cache, rows) if number is None else {}
+        if number is None:
+            print(
+                f"Reusing metadata for {len(cached_sdists):,} of {len(rows):,} ranked projects",
+                flush=True,
+            )
+        inspect = partial(
+            inspect_project, cached_formats=cached_formats, cached_sdists=cached_sdists
+        )
         for batch in batched(rows, batch_size, strict=False):
-            packages = list(pool.map(inspect, batch))
+            packages, updates = zip(*pool.map(inspect, batch), strict=True)
             # Checkpoint known formats. Recheck unclassified archives in case a read failed.
             new_formats = {
                 package["url"]: package["format"]
@@ -188,6 +251,10 @@ def survey(number):
             with cache:
                 cache.executemany(
                     "INSERT OR REPLACE INTO formats VALUES (?, ?)", new_formats.items()
+                )
+                cache.executemany(
+                    "INSERT OR REPLACE INTO project_sdists VALUES (?, ?, ?)",
+                    (update for update in updates if update is not None),
                 )
             cached_formats.update(new_formats)
             for row, package in zip(batch, packages, strict=True):

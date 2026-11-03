@@ -16,7 +16,8 @@ uv run --no-project python -m http.server --bind 127.0.0.1 --directory build 800
 ```
 
 Open [localhost:8000](http://localhost:8000/). Pass `--number 12` to generate a smaller sample.
-The generator caches archive classifications by PyPI file URL and checks release metadata on each build.
+The generator caches archive classifications by PyPI file URL. Full surveys use PyPI's
+project serials to refresh release metadata for new and changed projects.
 Refresh the script lockfile with `uv lock --script generate.py` after changing its inline metadata.
 
 ```sh
