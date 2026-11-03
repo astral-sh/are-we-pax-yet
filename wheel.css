@@ -1,0 +1,48 @@
+.success {
+  stroke: #198754;
+  stroke-width: 1;
+  fill: #198754;
+}
+
+.warning {
+  stroke: #ffca2c;
+  stroke-width: 1;
+  fill: #ffc107;
+}
+
+.default {
+  stroke: #cccccc;
+  stroke-width: 1;
+  fill: #ffffff;
+}
+
+.unsupported {
+  stroke: magenta;
+  stroke-width: 1;
+  fill: #ffffff;
+}
+
+line.wheel-line {
+  stroke: #333;
+}
+
+text.wheel-text {
+  fill: #333;
+}
+
+@media (prefers-color-scheme: dark) {
+  .default {
+    stroke: #222;
+    stroke-width: 1;
+    fill: black;
+  }
+
+  line.wheel-line {
+    stroke: #ccc;
+  }
+
+  text.wheel-text {
+    fill: #ccc;
+  }
+
+}
