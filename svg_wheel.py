@@ -1,10 +1,8 @@
 import math
 import xml.etree.ElementTree as et
 
-HEADERS = b"""<?xml version=\"1.0\" standalone=\"no\"?>
+HEADERS = b"""<?xml version="1.0"?>
 <?xml-stylesheet href="wheel.css" type="text/css"?>
-<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\"
-\"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">
 """
 
 PATH_TEMPLATE = """

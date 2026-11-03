@@ -292,25 +292,25 @@ def render_full_page(results, ranking_count, dates):
         name = escape(row["project"])
         project = quote(row["project"], safe="")
         version = "—"
-        status = '<span class="badge text-bg-secondary">No sdist</span>'
+        status = '<span class="format-chip missing">No sdist</span>'
         if package is not None:
             kind = package["format"]
             counts[kind] += 1
             version = escape(package["version"])
             css_class, _, status = STYLES[kind]
             if package["filename"].lower().endswith(".zip"):
-                status = '<span class="badge text-bg-danger">ZIP sdist</span>'
+                status = '<span class="format-chip zip">ZIP sdist</span>'
             elif kind != "other":
-                status = f'<span class="badge text-bg-{css_class}">{status}</span>'
+                status = f'<span class="format-chip {css_class}">{status}</span>'
 
         rows.append(
-            f'<tr id="project-{name}"><td class="text-end">{rank:,}</td>'
-            '<th scope="row" class="fw-normal">'
+            f'<tr id="project-{name}"><td>{rank:,}</td>'
+            '<th scope="row">'
             f'<a href="https://pypi.org/project/{project}/">{name}</a> '
             f'<a href="#project-{project}" aria-label="Permalink to {name}" title="Link to this row">#</a>'
             "</th>"
             f"<td>{status}</td><td>{version}</td>"
-            f'<td class="text-end">{row["download_count"]:,}</td></tr>'
+            f"<td>{row['download_count']:,}</td></tr>"
         )
 
     coverage = (
@@ -353,7 +353,7 @@ def write_site(results, ranking_count, number, output):
         )
         package_links.append(
             f'<a href="https://pypi.org/project/{project}/" '
-            f'class="btn btn-{package["css_class"]}" title="{title}">{name}{icon}</a>'
+            f'class="package-link {package["css_class"]}" title="{title}">{name}{icon}</a>'
         )
 
     index = Template((ROOT / "index.html").read_text(encoding="utf-8")).substitute(

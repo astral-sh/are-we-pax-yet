@@ -1,58 +1,254 @@
-body{margin-top:15px;}
-a.btn, h1{text-align: center;}
-a.btn:last-child, canvas, body{margin-bottom:15px;}
-a.btn {border-bottom-width: 0; border-radius: 0; width: 100%}
-a.btn:first-child{border-top-left-radius: 5px; border-top-right-radius: 5px;}
-a.btn:last-child{border-bottom-width: 1px; border-bottom-left-radius: 5px; border-bottom-right-radius: 5px;}
-object {max-width: 100%; height: auto; aspect-ratio: 1;}
-footer{text-align: center;}
-.results-table th[scope="row"] {
-    min-width: 8rem;
-    overflow-wrap: anywhere;
+:root {
+    color-scheme: light dark;
+    --surface: #fff;
+    --text: #212529;
+    --link: #0d6efd;
+    --link-hover: #0a58ca;
+    --code: #d63384;
+    --pax: #198754;
+    --gnu: #ffc107;
+    --table-text: #000;
+    --table-border: #dee2e6;
+    --table-stripe: #f2f2f2;
+    --unclassified-border: transparent;
+    --unclassified-hover: #f2f2f2;
 }
-.text-default {
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 15px 0;
+    background: var(--surface);
+    color: var(--text);
+    font: 1rem/1.5 system-ui, sans-serif;
+}
+
+h1, h2 {
+    margin: 0 0 .5rem;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+h1 {
+    font-size: min(1.375rem + 1.5vw, 2.5rem);
+}
+
+h2 {
+    font-size: min(1.325rem + .9vw, 2rem);
+}
+
+h1, footer {
+    text-align: center;
+}
+
+p, ul {
+    margin: 0 0 1rem;
+}
+
+ul {
+    padding-inline-start: 2rem;
+}
+
+code {
+    color: var(--code);
+    font-family: ui-monospace, monospace;
+    font-size: .875em;
+}
+
+a {
+    color: var(--link);
+}
+
+a:hover {
+    color: var(--link-hover);
+}
+
+.container {
+    width: 100%;
+    margin-inline: auto;
+    padding-inline: .75rem;
+}
+
+.overview {
+    display: grid;
+    gap: 0 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.wheel {
+    display: block;
+    margin-inline: auto;
+    max-width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+}
+
+.status-text.success {
+    color: var(--pax);
+}
+
+.status-text.warning {
+    color: var(--gnu);
+}
+
+.status-text.default {
     color: #777;
 }
-@media (max-width: 500px) {
-    .github-icon {width: 52px; height: 52px;}
+
+.package-list {
+    margin-bottom: 15px;
 }
+
+.package-link {
+    display: block;
+    padding: .375rem .75rem;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    color: var(--text);
+    text-align: center;
+    text-decoration: none;
+    overflow-wrap: anywhere;
+}
+
+.package-link:first-child {
+    border-radius: 5px 5px 0 0;
+}
+
+.package-link:last-child {
+    border-bottom-width: 1px;
+    border-end-start-radius: 5px;
+    border-end-end-radius: 5px;
+}
+
+.package-link.default {
+    border-color: var(--unclassified-border);
+}
+
+.package-link.default:hover {
+    background: var(--unclassified-hover);
+    color: var(--text);
+}
+
+:is(.package-link, .format-chip).success {
+    background: var(--pax);
+    color: #fff;
+}
+
+:is(.package-link, .format-chip).warning {
+    background: var(--gnu);
+    color: #000;
+}
+
+.package-link.success:hover {
+    background: #157347;
+}
+
+.package-link.warning:hover {
+    background: #ffca2c;
+}
+
+.table-scroll {
+    overflow-x: auto;
+}
+
+.results-table {
+    width: 100%;
+    margin-bottom: 1rem;
+    border-collapse: collapse;
+    color: var(--table-text);
+    text-align: start;
+}
+
+.results-table :is(th, td) {
+    padding: .25rem;
+    border-bottom: 1px solid var(--table-border);
+    vertical-align: middle;
+}
+
+.results-table tr > :is(:first-child, :last-child) {
+    text-align: end;
+}
+
+.results-table th[scope="row"] {
+    min-width: 8rem;
+    font-weight: normal;
+    overflow-wrap: anywhere;
+}
+
+.results-table tbody tr:nth-child(odd) {
+    background: var(--table-stripe);
+}
+
+.format-chip {
+    display: inline-block;
+    padding: .35em .65em;
+    border-radius: .375rem;
+    color: #fff;
+    font-size: .75em;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.format-chip.missing {
+    background: #6c757d;
+}
+
+.format-chip.zip {
+    background: #dc3545;
+}
+
+@media (min-width: 576px) {
+    .container { max-width: 540px; }
+    .overview { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (min-width: 768px) {
+    .container { max-width: 720px; }
+}
+
+@media (min-width: 992px) {
+    .container { max-width: 960px; }
+}
+
+@media (min-width: 1200px) {
+    .container { max-width: 1140px; }
+}
+
+@media (min-width: 1400px) {
+    .container { max-width: 1320px; }
+}
+
+@media (max-width: 500px) {
+    .github-icon { width: 52px; height: 52px; }
+}
+
 @media (prefers-color-scheme: dark) {
-    body {
-        color: #ccc;
-        background: black;
+    :root {
+        --surface: #000;
+        --text: #ccc;
+        --link: #5bf;
+        --link-hover: #000;
+        --code: #ccc;
+        --table-text: #ccc;
+        --table-border: #333;
+        --table-stripe: #111;
+        --unclassified-border: #222;
+        --unclassified-hover: #222;
     }
-    code, pre {
-        color: #ccc;
+
+    code {
         background: #222;
     }
-    a {
-        color: #5bf;
+
+    a:not(.package-link):hover {
+        background: var(--link);
+        outline: .05em solid var(--link);
     }
-    a:hover,
-    a:hover div {
-        color: black;
-        background-color: #5bf;
-        outline: 0.05em solid #5bf;
-    }
-    .btn-default {
-        color: #ccc;
-        background: black;
-        border-color: #222;
-    }
-    .btn-default:hover,
-    .btn-default:focus,
-    .btn-default:active,
-    .btn-default.active,
-    .open.dropdown-toggle.btn-default {
-        color: #ccc;
-        background: #222;
+
+    .package-link.default:hover {
         border-color: #333;
-    }
-    .table {
-        --bs-table-color: #ccc;
-        --bs-table-bg: black;
-        --bs-table-border-color: #333;
-        --bs-table-striped-color: #ccc;
-        --bs-table-striped-bg: #111;
     }
 }
