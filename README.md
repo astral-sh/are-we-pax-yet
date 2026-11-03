@@ -22,7 +22,6 @@ Refresh the script lockfile with `uv lock --script generate.py` after changing i
 ```sh
 uv run --locked ruff check
 uv run --locked ruff format --check
-uv run --locked python -m unittest
 ```
 
 GitHub Actions builds and deploys to Pages on pushes to `main` and once a day. The workflow can

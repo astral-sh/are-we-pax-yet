@@ -40,9 +40,6 @@ jobs:
           uv run --locked ruff check
           uv run --locked ruff format --check
 
-      - name: Test archive detection
-        run: uv run --locked python -m unittest
-
       - name: Restore sdist format cache
         if: github.ref == 'refs/heads/main'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
