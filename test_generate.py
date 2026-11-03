@@ -79,7 +79,7 @@ class SurveyTests(unittest.TestCase):
         }
         archive_formats = {
             sdists["pax-project"]["url"]: "pax",
-            sdists["gnu-project"]["url"]: "gnu",
+            sdists["gnu-project"]["url"]: "other",
         }
 
         def fetch(url, _):
@@ -95,11 +95,13 @@ class SurveyTests(unittest.TestCase):
                 ),
                 patch("generate.fetch", side_effect=fetch) as fetch_mock,
             ):
-                results, total = survey(None)
+                first_results, _ = survey(None)
+                self.assertEqual(first_results[-1][1]["format"], "other")
                 self.assertEqual(fetch_mock.call_count, 3)
                 fetch_mock.reset_mock()
-                self.assertEqual(survey(None), (results, total))
-                self.assertEqual(fetch_mock.call_count, 1)
+                archive_formats[sdists["gnu-project"]["url"]] = "gnu"
+                results, total = survey(None)
+                self.assertEqual(fetch_mock.call_count, 2)
 
             write_site(results, total, 1, output)
             wheel = json.loads((output / "results.json").read_text(encoding="utf-8"))

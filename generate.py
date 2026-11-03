@@ -189,19 +189,23 @@ def survey(number):
         cache.execute(
             "CREATE TABLE IF NOT EXISTS formats (url TEXT PRIMARY KEY, format TEXT NOT NULL)"
         )
-        cached_formats = dict(cache.execute("SELECT url, format FROM formats"))
+        cached_formats = dict(
+            cache.execute("SELECT url, format FROM formats WHERE format != 'other'")
+        )
         inspect = partial(inspect_project, cached_formats=cached_formats)
         for batch in batched(rows, batch_size, strict=False):
             packages = list(pool.map(inspect, batch))
-            # Checkpoint completed batches so a retry can reuse their classifications.
+            # Checkpoint known formats. Recheck unclassified archives in case a read failed.
             new_formats = {
                 package["url"]: package["format"]
                 for package in packages
-                if package is not None and package["url"] not in cached_formats
+                if package is not None
+                and package["format"] != "other"
+                and package["url"] not in cached_formats
             }
             with cache:
                 cache.executemany(
-                    "INSERT OR IGNORE INTO formats VALUES (?, ?)", new_formats.items()
+                    "INSERT OR REPLACE INTO formats VALUES (?, ?)", new_formats.items()
                 )
             cached_formats.update(new_formats)
             for row, package in zip(batch, packages, strict=True):
