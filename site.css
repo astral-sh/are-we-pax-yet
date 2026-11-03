@@ -149,22 +149,45 @@ a:hover {
     background: #ffca2c;
 }
 
+.results-page {
+    scrollbar-gutter: stable;
+}
+
 .table-scroll {
     overflow-x: auto;
 }
 
 .results-table {
     width: 100%;
+    min-width: 36rem;
     margin-bottom: 1rem;
-    border-collapse: collapse;
+    table-layout: fixed;
+    border-spacing: 0;
     color: var(--table-text);
     text-align: start;
+}
+
+.results-table thead th:first-child {
+    width: 4rem;
+}
+
+.results-table thead th:nth-child(3) {
+    width: 11rem;
+}
+
+.results-table thead th:nth-child(4) {
+    width: 18%;
+}
+
+.results-table thead th:last-child {
+    width: 21%;
 }
 
 .results-table :is(th, td) {
     padding: .25rem;
     border-bottom: 1px solid var(--table-border);
     vertical-align: middle;
+    overflow-wrap: anywhere;
 }
 
 .results-table tr > :is(:first-child, :last-child) {
@@ -172,9 +195,7 @@ a:hover {
 }
 
 .results-table th[scope="row"] {
-    min-width: 8rem;
     font-weight: normal;
-    overflow-wrap: anywhere;
 }
 
 .results-table tbody tr:nth-child(odd) {
