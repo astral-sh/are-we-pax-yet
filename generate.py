@@ -240,8 +240,11 @@ def render_full_page(results, ranking_count, dates):
                 status = f'<span class="badge text-bg-{css_class}">{status}</span>'
 
         rows.append(
-            f'<tr><td class="text-end">{rank:,}</td>'
-            f'<th scope="row" class="fw-normal"><a href="https://pypi.org/project/{project}/">{name}</a></th>'
+            f'<tr id="project-{name}"><td class="text-end">{rank:,}</td>'
+            '<th scope="row" class="fw-normal">'
+            f'<a href="https://pypi.org/project/{project}/">{name}</a> '
+            f'<a href="#project-{project}" aria-label="Permalink to {name}" title="Link to this row">#</a>'
+            "</th>"
             f"<td>{status}</td><td>{version}</td>"
             f'<td class="text-end">{row["download_count"]:,}</td></tr>'
         )
