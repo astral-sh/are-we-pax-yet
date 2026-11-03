@@ -7,14 +7,16 @@
 import argparse
 import gzip
 import json
+import os
 import re
 import sqlite3
+import sys
 import tarfile
 import time
 import zlib
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing
+from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 from functools import partial
 from html import escape
@@ -209,6 +211,19 @@ def inspect_project(row, cached_formats, cached_sdists):
     return package, update
 
 
+@contextmanager
+def survey_workers():
+    pool = ThreadPoolExecutor(max_workers=WORKERS)
+    interrupted = False
+    try:
+        yield pool
+    except KeyboardInterrupt:
+        interrupted = True
+        raise
+    finally:
+        pool.shutdown(wait=not interrupted, cancel_futures=interrupted)
+
+
 def survey(number):
     print("Fetching the 30-day download ranking…", flush=True)
     rows = fetch(RANKING_URL, json.load)["rows"]
@@ -216,8 +231,8 @@ def survey(number):
     sdist_count = 0
     batch_size = WORKERS if number is not None else 512
     with (
+        survey_workers() as pool,
         closing(sqlite3.connect(CACHE_PATH)) as cache,
-        ThreadPoolExecutor(max_workers=WORKERS) as pool,
     ):
         cache.execute(
             "CREATE TABLE IF NOT EXISTS formats (url TEXT PRIMARY KEY, format TEXT NOT NULL)"
@@ -365,7 +380,7 @@ def write_site(results, ranking_count, number, output):
     print(f"Wrote {output} with {len(results):,} ranked projects and {number} wedges.")
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
@@ -380,5 +395,16 @@ if __name__ == "__main__":
         parser.error("--number must be positive")
     if args.output.resolve() == ROOT:
         parser.error("--output must be different from the source directory")
-    results, ranking_count = survey(args.number)
+    try:
+        results, ranking_count = survey(args.number)
+    except KeyboardInterrupt:
+        print("\nScan interrupted.", file=sys.stderr, flush=True)
+        # The cache is closed. Exit directly because interpreter shutdown would
+        # wait for any worker still blocked on a network request.
+        os._exit(130)
+
     write_site(results, ranking_count, args.number or TO_CHART, args.output)
+
+
+if __name__ == "__main__":
+    main()
