@@ -62,27 +62,27 @@
           }
         }
     </style>
-    <title>Are we PAX yet? 📦</title>
+    <title>Are we pax yet? 📦</title>
 </head>
 <body>
     <div class="container">
         <div class="row">
             <div class="col-sm">
-                <h1 id="pax">Are we PAX yet? 📦</h1>
-                <object data="wheel.svg" type="image/svg+xml" width="380" height="380" class="d-block mx-auto" aria-label="$pax_count of $total sdists are PAX-compatible ($pax_percent)">
-                    $pax_count of $total sdists are PAX-compatible ($pax_percent).
+                <h1 id="pax">Are we pax yet? 📦</h1>
+                <object data="wheel.svg" type="image/svg+xml" width="380" height="380" class="d-block mx-auto" aria-label="$pax_count of $total sdists are pax-compatible ($pax_percent)">
+                    $pax_count of $total sdists are pax-compatible ($pax_percent).
                 </object>
-                <h2 id="what-pax">What is PAX?</h2>
+                <h2 id="what-pax">What is pax?</h2>
                 <p>
-                    PAX is the POSIX.1-2001 tar format. It extends the older <code>ustar</code>
-                    format to support features such as long paths and UTF-8 filenames.
+                    The POSIX.1-2001 pax tar format extends the older <code>ustar</code> format to
+                    support features such as long paths and UTF-8 filenames.
                 </p>
                 <h2 id="what-sdist">What are source distributions?</h2>
                 <p>
                     Source distributions (sdists) are archives of a Python project's source code
                     and build metadata. The
                     <a href="https://packaging.python.org/en/latest/specifications/source-distribution-format/">sdist specification</a>
-                    requires PAX-format <code>.tar.gz</code> archives.
+                    requires pax-format <code>.tar.gz</code> archives.
                 </p>
                 <h2 id="about-list">What is this list?</h2>
                 <p>
@@ -92,17 +92,17 @@
                     downloads over 30 days, starting at the top.
                 </p>
                 <ul>
-                    <li><span class="text-success">Green</span> packages ($pax_percent) with a 📦 use PAX or plain ustar headers.</li>
+                    <li><span class="text-success">Green</span> packages ($pax_percent) with a 📦 use pax or plain ustar headers.</li>
                     <li><span class="text-warning">Yellow</span> packages ($gnu_percent) use GNU-style tar headers.</li>
                     <li><span class="text-default">Uncolored</span> packages ($unreadable_percent) have unreadable tar archives.</li>
                     <li><span class="text-unsupported">Magenta</span> packages ($other_percent) use another archive format.</li>
                 </ul>
                 <p>
-                    A PAX writer can emit plain ustar headers when no extensions are needed, so
+                    A pax writer can emit plain ustar headers when no extensions are needed, so
                     both count toward the total in the center of the wheel.
                     <a href="results.json">Download the results as JSON</a>.
                 </p>
-                <h2 id="creating-sdists">How do I create a PAX sdist?</h2>
+                <h2 id="creating-sdists">How do I create a pax sdist?</h2>
                 <p>
                     Check your build backend's sdist format. If you write the tar archive yourself
                     with Python's <a href="https://docs.python.org/3/library/tarfile.html"><code>tarfile</code></a>,

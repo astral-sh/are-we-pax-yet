@@ -28,17 +28,15 @@ jobs:
         with:
           version: '0.13.6'
           python-version: '3.14'
-          cache-dependency-glob: |
-            generate.py
-            .github/workflows/deploy.yml
+          cache-dependency-glob: uv.lock
 
       - name: Lint and check formatting
         run: |
-          uvx ruff@0.17.3 check
-          uvx ruff@0.17.3 format --check
+          uv run --locked ruff check
+          uv run --locked ruff format --check
 
       - name: Test archive detection
-        run: uv run --no-project python -m unittest
+        run: uv run --locked python -m unittest
 
       - name: Build site
         if: github.ref == 'refs/heads/main'

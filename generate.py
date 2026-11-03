@@ -33,8 +33,8 @@ TO_CHART = 360
 WORKERS = 16
 
 STYLES = {
-    "pax": ("success", "📦", "PAX extended headers"),
-    "ustar": ("success", "📦", "Plain ustar (PAX-compatible)"),
+    "pax": ("success", "📦", "pax extended headers"),
+    "ustar": ("success", "📦", "Plain ustar (pax-compatible)"),
     "gnu": ("warning", "", "GNU-style tar headers"),
     "other": ("unsupported", "", "Other archive format"),
     "unreadable": ("default", "", "Unreadable tar archive"),
@@ -108,7 +108,7 @@ def tar_format(source):
     class FormatTrackingTarInfo(tarfile.TarInfo):
         @staticmethod
         def record_header(buf, member):
-            # PAX and ustar share the same magic. Look at raw headers because
+            # The pax and ustar formats share the same magic. Look at raw headers because
             # tarfile folds extension headers into the members they describe.
             magic = buf[257:265]
             if magic == b"ustar  \0" or member.type in (b"K", b"L", b"N", b"S"):
@@ -146,7 +146,7 @@ def tar_format(source):
                 bufsize=65536,
             ) as archive,
         ):
-            # An ordinary ustar member can precede a PAX extension or GNU header.
+            # An ordinary ustar member can precede a pax extension or GNU header.
             for _ in archive:
                 pass
     except GNUHeader:
@@ -233,7 +233,7 @@ def write_site(packages, output):
     generate_svg_wheel(packages, output / "wheel.svg")
     copyfile(ROOT / "wheel.css", output / "wheel.css")
     print(
-        f"Wrote {output} with {counts['success']}/{len(packages)} PAX-compatible sdists."
+        f"Wrote {output} with {counts['success']}/{len(packages)} pax-compatible sdists."
     )
 
 

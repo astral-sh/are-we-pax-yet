@@ -94,7 +94,7 @@ def add_fraction(wheel, packages):
     numerator.text = str(pax_count)
 
     title = et.SubElement(numerator, "title")
-    percentage = f"{pax_count / total:.0%} PAX-compatible"
+    percentage = f"{pax_count / total:.0%} pax-compatible"
     title.text = percentage
 
     # Dividing line

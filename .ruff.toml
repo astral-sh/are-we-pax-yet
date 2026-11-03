@@ -1,4 +1,0 @@
-target-version = "py313"
-
-[lint]
-extend-select = ["B", "I", "UP"]
