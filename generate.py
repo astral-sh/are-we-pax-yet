@@ -235,7 +235,7 @@ def render_full_page(results, ranking_count, dates):
             version = escape(package["version"])
             css_class, _, status = STYLES[kind]
             if package["filename"].lower().endswith(".zip"):
-                status = '<span class="badge text-bg-primary">ZIP sdist</span>'
+                status = '<span class="badge text-bg-danger">ZIP sdist</span>'
             elif kind != "other":
                 status = f'<span class="badge text-bg-{css_class}">{status}</span>'
 
