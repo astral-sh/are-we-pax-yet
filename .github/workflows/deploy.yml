@@ -28,6 +28,9 @@ jobs:
         with:
           version: '0.13.6'
           python-version: '3.14'
+          cache-dependency-glob: |
+            generate.py
+            .github/workflows/deploy.yml
 
       - name: Lint and check formatting
         run: |
