@@ -92,11 +92,21 @@
                     <a href="results.json">Download the results as JSON</a>.
                 </p>
                 <h2 id="creating-sdists">How do I create a pax sdist?</h2>
-                <p>
-                    Check your build backend's sdist format. If you write the tar archive yourself
-                    with Python's <a href="https://docs.python.org/3/library/tarfile.html"><code>tarfile</code></a>,
-                    use <code>tarfile.PAX_FORMAT</code>.
-                </p>
+                <ul>
+                    <li>
+                        uv 0.13 builds pax sdists by default with the <code>uv_build</code> backend.
+                        (<a href="https://github.com/astral-sh/uv/releases/tag/0.13.0">uv release notes</a>)
+                    </li>
+                    <li>
+                        maturin 1.14.0 builds pax sdists by default.
+                        (<a href="https://github.com/PyO3/maturin/releases/tag/v1.14.0">maturin release notes</a>)
+                    </li>
+                    <li>
+                        If you write the archive yourself, Python 3.9's <code>tarfile</code> uses pax
+                        by default. Python 3.8 introduced this default.
+                        (<a href="https://docs.python.org/3/library/tarfile.html#tarfile.DEFAULT_FORMAT">Python documentation</a>)
+                    </li>
+                </ul>
                 <h2 id="bugs">Something's wrong with this page!</h2>
                 <p>Please <a href="https://github.com/astral-sh/are-we-pax-yet/issues/">open an issue</a> with the package and version.</p>
                 <h2 id="thanks">Thanks</h2>
