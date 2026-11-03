@@ -6,7 +6,7 @@ source distributions. It uses the design from [Are we PEP 740 yet?](https://gith
 The survey follows the 30-day download ranking from [Top PyPI Packages](https://hugovk.github.io/top-pypi-packages/).
 It charts the first 360 projects whose latest release on PyPI has an unyanked sdist, preferring
 the `.tar.gz` if there are multiple formats. The wheel counts both pax and plain ustar headers
-as pax-compatible. The JSON results record the specific format.
+as pax-compatible. The JSON results record the archive classification.
 
 ## Development
 

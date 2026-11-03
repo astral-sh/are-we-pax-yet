@@ -17,9 +17,6 @@
         .text-default {
             color: #777;
         }
-        .text-unsupported {
-          color: magenta;
-        }
         @media (max-width: 500px) {
           .github-icon {width: 52px; height: 52px;}
         }
@@ -44,11 +41,6 @@
           .btn-default {
             color: #ccc;
             background: black;
-            border-color: #222;
-          }
-          .btn-unsupported {
-            color: white;
-            background: magenta;
             border-color: #222;
           }
           .btn-default:hover,
@@ -94,8 +86,7 @@
                 <ul>
                     <li><span class="text-success">Green</span> packages ($pax_percent) with a 📦 use pax or plain ustar headers.</li>
                     <li><span class="text-warning">Yellow</span> packages ($gnu_percent) use GNU-style tar headers.</li>
-                    <li><span class="text-default">Uncolored</span> packages ($unreadable_percent) have unreadable tar archives.</li>
-                    <li><span class="text-unsupported">Magenta</span> packages ($other_percent) use another archive format.</li>
+                    <li><span class="text-default">Uncolored</span> packages ($other_percent) have an unclassified archive format.</li>
                 </ul>
                 <p>
                     A pax writer can emit plain ustar headers when no extensions are needed, so

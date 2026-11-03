@@ -52,5 +52,5 @@ class TarFormatTests(unittest.TestCase):
             "gnu",
         )
 
-    def test_unreadable_archive(self):
-        self.assertEqual(tar_format(io.BytesIO(b"not a gzip file")), "unreadable")
+    def test_unreadable_archive_is_unclassified(self):
+        self.assertEqual(tar_format(io.BytesIO(b"not a gzip file")), "other")

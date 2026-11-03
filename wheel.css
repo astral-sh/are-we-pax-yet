@@ -16,12 +16,6 @@
   fill: #ffffff;
 }
 
-.unsupported {
-  stroke: magenta;
-  stroke-width: 1;
-  fill: #ffffff;
-}
-
 line.wheel-line {
   stroke: #333;
 }

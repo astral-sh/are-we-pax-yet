@@ -36,8 +36,7 @@ STYLES = {
     "pax": ("success", "📦", "pax extended headers"),
     "ustar": ("success", "📦", "Plain ustar (pax-compatible)"),
     "gnu": ("warning", "", "GNU-style tar headers"),
-    "other": ("unsupported", "", "Other archive format"),
-    "unreadable": ("default", "", "Unreadable tar archive"),
+    "other": ("default", "", "Unclassified archive"),
 }
 
 
@@ -152,10 +151,10 @@ def tar_format(source):
     except GNUHeader:
         return "gnu"
     except (tarfile.TarError, gzip.BadGzipFile, EOFError, ValueError, zlib.error):
-        return "unreadable"
+        return "other"
 
     return next(
-        (kind for kind in ("other", "pax", "ustar") if kind in formats), "unreadable"
+        (kind for kind in ("other", "pax", "ustar") if kind in formats), "other"
     )
 
 
@@ -218,8 +217,7 @@ def write_site(packages, output):
         pax_count=counts["success"],
         pax_percent=f"{counts['success'] / len(packages):.0%}",
         gnu_percent=f"{counts['warning'] / len(packages):.0%}",
-        unreadable_percent=f"{counts['default'] / len(packages):.0%}",
-        other_percent=f"{counts['unsupported'] / len(packages):.0%}",
+        other_percent=f"{counts['default'] / len(packages):.0%}",
         timestamp=now.isoformat(),
         last_update=now.strftime("%d %B %Y, %H:%M UTC"),
     )
