@@ -33,8 +33,7 @@ TO_CHART = 360
 WORKERS = 16
 
 STYLES = {
-    "pax": ("success", "📦", "pax extended headers"),
-    "ustar": ("success", "📦", "Plain ustar (pax-compatible)"),
+    "pax": ("success", "📦", "pax tar archive"),
     "gnu": ("warning", "", "GNU-style tar headers"),
     "other": ("default", "", "Unclassified archive"),
 }
@@ -107,17 +106,13 @@ def tar_format(source):
     class FormatTrackingTarInfo(tarfile.TarInfo):
         @staticmethod
         def record_header(buf, member):
-            # The pax and ustar formats share the same magic. Look at raw headers because
-            # tarfile folds extension headers into the members they describe.
+            # Inspect raw headers because tarfile folds extension headers into
+            # the members they describe. Plain ustar headers count as pax.
             magic = buf[257:265]
             if magic == b"ustar  \0" or member.type in (b"K", b"L", b"N", b"S"):
                 raise GNUHeader
-            if magic != b"ustar\x0000":
-                formats.add("other")
-            elif member.type in (b"x", b"g"):
+            if magic == b"ustar\x0000" and member.type in b"\x0001234567xg":
                 formats.add("pax")
-            elif member.type in (b"\0", b"0", b"1", b"2", b"3", b"4", b"5", b"6", b"7"):
-                formats.add("ustar")
             else:
                 formats.add("other")
             return member
@@ -145,7 +140,7 @@ def tar_format(source):
                 bufsize=65536,
             ) as archive,
         ):
-            # An ordinary ustar member can precede a pax extension or GNU header.
+            # GNU or other headers can appear after ordinary pax headers.
             for _ in archive:
                 pass
     except GNUHeader:
@@ -153,9 +148,7 @@ def tar_format(source):
     except (tarfile.TarError, gzip.BadGzipFile, EOFError, ValueError, zlib.error):
         return "other"
 
-    return next(
-        (kind for kind in ("other", "pax", "ustar") if kind in formats), "other"
-    )
+    return "pax" if formats == {"pax"} else "other"
 
 
 def inspect_sdist(sdist):
@@ -230,9 +223,7 @@ def write_site(packages, output):
     )
     generate_svg_wheel(packages, output / "wheel.svg")
     copyfile(ROOT / "wheel.css", output / "wheel.css")
-    print(
-        f"Wrote {output} with {counts['success']}/{len(packages)} pax-compatible sdists."
-    )
+    print(f"Wrote {output} with {counts['success']}/{len(packages)} pax sdists.")
 
 
 if __name__ == "__main__":

@@ -34,11 +34,11 @@ class TarFormatTests(unittest.TestCase):
             "pax",
         )
 
-    def test_ustar_and_pax_without_extensions_are_indistinguishable(self):
+    def test_ustar_and_pax_without_extensions_classify_as_pax(self):
         for format in (tarfile.USTAR_FORMAT, tarfile.PAX_FORMAT):
             with self.subTest(format=format):
-                member = tarfile.TarInfo("demo/PaxHeaders/ordinary-file")
-                self.assertEqual(self.classify((member, format)), "ustar")
+                member = tarfile.TarInfo("demo/PKG-INFO")
+                self.assertEqual(self.classify((member, format)), "pax")
 
     def test_gnu_magic_without_extensions(self):
         member = tarfile.TarInfo("demo/PKG-INFO")
