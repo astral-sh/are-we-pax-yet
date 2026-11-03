@@ -7,14 +7,18 @@
 import argparse
 import gzip
 import json
+import sqlite3
 import tarfile
 import time
 import zlib
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from datetime import UTC, datetime
+from functools import partial
 from html import escape
 from http.client import IncompleteRead
+from itertools import batched
 from pathlib import Path
 from shutil import copyfile
 from string import Template
@@ -30,7 +34,8 @@ RANKING_URL = (
     "top-pypi-packages-30-days.min.json"
 )
 TO_CHART = 360
-WORKERS = 16
+WORKERS = 32
+CACHE_PATH = ROOT / ".sdist-formats-v1.sqlite"
 
 STYLES = {
     "pax": ("success", "📦", "pax tar archive"),
@@ -151,12 +156,17 @@ def tar_format(source):
     return "pax" if formats == {"pax"} else "other"
 
 
-def inspect_sdist(sdist):
-    kind = (
-        fetch(sdist["url"], tar_format)
-        if sdist["filename"].endswith(".tar.gz")
-        else "other"
-    )
+def inspect_project(row, cached_formats):
+    sdist = latest_sdist(row)
+    if sdist is None:
+        return None
+
+    url = sdist["url"]
+    kind = cached_formats.get(url)
+    if kind is None:
+        kind = (
+            fetch(url, tar_format) if sdist["filename"].endswith(".tar.gz") else "other"
+        )
     css_class, icon, label = STYLES[kind]
     return sdist | {
         "format": kind,
@@ -167,28 +177,97 @@ def inspect_sdist(sdist):
 
 
 def survey(number):
-    print("Fetching download rankings and latest release metadata…", flush=True)
+    print("Fetching the 30-day download ranking…", flush=True)
     rows = fetch(RANKING_URL, json.load)["rows"]
-    sdists = []
-    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        for start in range(0, len(rows), WORKERS):
-            batch = rows[start : start + WORKERS]
-            sdists.extend(
-                sdist for sdist in pool.map(latest_sdist, batch) if sdist is not None
+    results = []
+    sdist_count = 0
+    batch_size = WORKERS if number is not None else 512
+    with (
+        closing(sqlite3.connect(CACHE_PATH)) as cache,
+        ThreadPoolExecutor(max_workers=WORKERS) as pool,
+    ):
+        cache.execute(
+            "CREATE TABLE IF NOT EXISTS formats (url TEXT PRIMARY KEY, format TEXT NOT NULL)"
+        )
+        cached_formats = dict(cache.execute("SELECT url, format FROM formats"))
+        inspect = partial(inspect_project, cached_formats=cached_formats)
+        for batch in batched(rows, batch_size, strict=False):
+            packages = list(pool.map(inspect, batch))
+            # Checkpoint completed batches so a retry can reuse their classifications.
+            new_formats = {
+                package["url"]: package["format"]
+                for package in packages
+                if package is not None and package["url"] not in cached_formats
+            }
+            with cache:
+                cache.executemany(
+                    "INSERT OR IGNORE INTO formats VALUES (?, ?)", new_formats.items()
+                )
+            cached_formats.update(new_formats)
+            for row, package in zip(batch, packages, strict=True):
+                results.append((row, package))
+                if package is not None:
+                    sdist_count += 1
+                    if sdist_count == number:
+                        return results, len(rows)
+            print(
+                f"Checked {len(results):,} of {len(rows):,} ranked projects", flush=True
             )
-            if len(sdists) >= number:
-                break
-        if len(sdists) < number:
-            raise RuntimeError(
-                f"Found only {len(sdists)} sdists for {number} places in the chart"
-            )
-        print(f"Inspecting {number} sdists from PyPI…", flush=True)
-        return list(pool.map(inspect_sdist, sdists[:number]))
+
+    return results, len(rows)
 
 
-def write_site(packages, output):
+def render_full_page(results, ranking_count, dates):
+    rows = []
+    counts = Counter()
+    for rank, (row, package) in enumerate(results, start=1):
+        name = escape(row["project"])
+        project = quote(row["project"], safe="")
+        version = "—"
+        status = "No sdist"
+        if package is not None:
+            kind = package["format"]
+            counts[kind] += 1
+            version = escape(package["version"])
+            css_class, _, status = STYLES[kind]
+            if kind != "other":
+                status = f'<span class="badge text-bg-{css_class}">{status}</span>'
+
+        rows.append(
+            f'<tr><td class="text-end">{rank:,}</td>'
+            f'<th scope="row" class="fw-normal"><a href="https://pypi.org/project/{project}/">{name}</a></th>'
+            f'<td class="text-end">{row["download_count"]:,}</td>'
+            f"<td>{version}</td><td>{status}</td></tr>"
+        )
+
+    coverage = (
+        f"all {ranking_count:,} projects"
+        if len(results) == ranking_count
+        else f"the first {len(results):,} of {ranking_count:,} projects"
+    )
+    sdist_count = counts.total()
+    return Template((ROOT / "full.html").read_text(encoding="utf-8")).substitute(
+        coverage=coverage,
+        sdist_count=f"{sdist_count:,}",
+        pax_count=f"{counts['pax']:,}",
+        pax_percent=f"{counts['pax'] / sdist_count:.1%}" if sdist_count else "0%",
+        rows="\n".join(rows),
+        **dates,
+    )
+
+
+def write_site(results, ranking_count, number, output):
+    packages = [package for _, package in results if package is not None][:number]
+    if len(packages) < number:
+        raise RuntimeError(
+            f"Found only {len(packages)} sdists for {number} places in the chart"
+        )
     counts = Counter(package["css_class"] for package in packages)
     now = datetime.now(UTC).replace(microsecond=0)
+    dates = {
+        "timestamp": now.isoformat(),
+        "last_update": now.strftime("%d %B %Y, %H:%M UTC"),
+    }
     package_links = []
     for package in packages:
         name = escape(package["name"])
@@ -211,19 +290,21 @@ def write_site(packages, output):
         pax_percent=f"{counts['success'] / len(packages):.0%}",
         gnu_percent=f"{counts['warning'] / len(packages):.0%}",
         other_percent=f"{counts['default'] / len(packages):.0%}",
-        timestamp=now.isoformat(),
-        last_update=now.strftime("%d %B %Y, %H:%M UTC"),
+        **dates,
     )
+    full = render_full_page(results, ranking_count, dates)
 
     output.mkdir(parents=True, exist_ok=True)
     (output / "index.html").write_text(index, encoding="utf-8")
+    (output / "full.html").write_text(full, encoding="utf-8")
     (output / "results.json").write_text(
         json.dumps({"data": packages, "last_update": now.isoformat()}, indent=2) + "\n",
         encoding="utf-8",
     )
     generate_svg_wheel(packages, output / "wheel.svg")
     copyfile(ROOT / "wheel.css", output / "wheel.css")
-    print(f"Wrote {output} with {counts['success']}/{len(packages)} pax sdists.")
+    copyfile(ROOT / "site.css", output / "site.css")
+    print(f"Wrote {output} with {len(results):,} ranked projects and {number} wedges.")
 
 
 if __name__ == "__main__":
@@ -231,14 +312,15 @@ if __name__ == "__main__":
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument(
-        "-n", "--number", type=int, default=TO_CHART, help="number of sdists to chart"
+        "-n", "--number", type=int, help="generate a preview with this many sdists"
     )
     parser.add_argument(
         "--output", type=Path, default=ROOT / "build", help="site output directory"
     )
     args = parser.parse_args()
-    if args.number < 1:
+    if args.number is not None and args.number < 1:
         parser.error("--number must be positive")
     if args.output.resolve() == ROOT:
         parser.error("--output must be different from the source directory")
-    write_site(survey(args.number), args.output)
+    results, ranking_count = survey(args.number)
+    write_site(results, ranking_count, args.number or TO_CHART, args.output)

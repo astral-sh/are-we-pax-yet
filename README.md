@@ -4,9 +4,9 @@
 source distributions. It uses the design from [Are we PEP 740 yet?](https://github.com/trailofbits/are-we-pep740-yet).
 
 The survey follows the 30-day download ranking from [Top PyPI Packages](https://hugovk.github.io/top-pypi-packages/).
-It charts the first 360 projects whose latest release on PyPI has an unyanked sdist, preferring
-the `.tar.gz` if there are multiple formats. The survey classifies ustar archives as pax.
-The JSON results record the archive classification.
+The full results table includes every ranked project. The wheel and its JSON results cover the
+first 360 projects whose latest release on PyPI has an unyanked sdist. The survey prefers the
+`.tar.gz` if there are multiple formats and classifies ustar archives as pax.
 
 ## Development
 
@@ -16,6 +16,7 @@ uv run --no-project python -m http.server --bind 127.0.0.1 --directory build 800
 ```
 
 Open [localhost:8000](http://localhost:8000/). Pass `--number 12` to generate a smaller sample.
+The generator caches archive classifications by PyPI file URL and checks release metadata on each build.
 Refresh the script lockfile with `uv lock --script generate.py` after changing its inline metadata.
 
 ```sh

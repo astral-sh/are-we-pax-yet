@@ -18,7 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,9 +43,24 @@ jobs:
       - name: Test archive detection
         run: uv run --locked python -m unittest
 
+      - name: Restore sdist format cache
+        if: github.ref == 'refs/heads/main'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .sdist-formats-v1.sqlite
+          key: sdist-formats-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: sdist-formats-v1-
+
       - name: Build site
         if: github.ref == 'refs/heads/main'
         run: uv run --locked --script generate.py
+
+      - name: Save sdist format cache
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('.sdist-formats-v1.sqlite') != '' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .sdist-formats-v1.sqlite
+          key: sdist-formats-v1-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload site
         if: github.ref == 'refs/heads/main'
