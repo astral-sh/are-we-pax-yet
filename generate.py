@@ -35,7 +35,7 @@ RANKING_URL = (
 )
 TO_CHART = 360
 WORKERS = 32
-CACHE_PATH = ROOT / ".sdist-formats-v1.sqlite"
+CACHE_PATH = ROOT / ".sdist-formats-v2.sqlite"
 
 STYLES = {
     "pax": ("success", "📦", "pax tar archive"),
@@ -44,12 +44,13 @@ STYLES = {
 }
 
 
-def fetch(url, read):
+def fetch(url, read, *, headers=None):
     request = Request(
         url,
         headers={
             "Accept-Encoding": "gzip",
             "User-Agent": "are-we-pax-yet (+https://github.com/astral-sh/are-we-pax-yet)",
+            **(headers or {}),
         },
     )
     for attempt in range(3):
@@ -101,59 +102,42 @@ def latest_sdist(row):
     }
 
 
-class GNUHeader(Exception):
-    """Stop reading as soon as a GNU-style header determines the result."""
+def read_tar_header(source):
+    try:
+        with gzip.GzipFile(fileobj=source) as data:
+            return data.read(tarfile.BLOCKSIZE)
+    except (gzip.BadGzipFile, EOFError, zlib.error):
+        return b""
 
 
-def tar_format(source):
-    formats = set()
+def tar_format(url):
+    # A byte range addresses the gzip file. Its prefix normally expands to
+    # at least one full tar header.
+    try:
+        block = fetch(
+            url,
+            read_tar_header,
+            headers={"Range": "bytes=0-1023", "Accept-Encoding": "identity"},
+        )
+    except HTTPError as error:
+        if error.code != 416:
+            raise
+        block = b""
 
-    class FormatTrackingTarInfo(tarfile.TarInfo):
-        @staticmethod
-        def record_header(buf, member):
-            # Inspect raw headers because tarfile folds extension headers into
-            # the members they describe. Plain ustar headers count as pax.
-            magic = buf[257:265]
-            if magic == b"ustar  \0" or member.type in (b"K", b"L", b"N", b"S"):
-                raise GNUHeader
-            if magic == b"ustar\x0000" and member.type in b"\x0001234567xg":
-                formats.add("pax")
-            else:
-                formats.add("other")
-            return member
-
-        @classmethod
-        def frombuf(cls, buf, encoding, errors):
-            # Python 3.13 dispatches through frombuf. Newer versions can
-            # dispatch through _frombuf directly when reading extensions.
-            return cls.record_header(buf, super().frombuf(buf, encoding, errors))
-
-        @classmethod
-        def _frombuf(cls, buf, encoding, errors, **kwargs):
-            return cls.record_header(
-                buf, super()._frombuf(buf, encoding, errors, **kwargs)
-            )
+    if len(block) < tarfile.BLOCKSIZE:
+        block = fetch(url, read_tar_header)
 
     try:
-        with (
-            gzip.GzipFile(fileobj=source) as data,
-            tarfile.open(
-                fileobj=data,
-                mode="r|",
-                tarinfo=FormatTrackingTarInfo,
-                stream=True,
-                bufsize=65536,
-            ) as archive,
-        ):
-            # GNU or other headers can appear after ordinary pax headers.
-            for _ in archive:
-                pass
-    except GNUHeader:
-        return "gnu"
-    except (tarfile.TarError, gzip.BadGzipFile, EOFError, ValueError, zlib.error):
+        member = tarfile.TarInfo.frombuf(block, tarfile.ENCODING, "surrogateescape")
+    except (tarfile.HeaderError, ValueError):
         return "other"
 
-    return "pax" if formats == {"pax"} else "other"
+    magic = block[257:265]
+    if magic == tarfile.GNU_MAGIC or member.type in (b"K", b"L", b"N", b"S"):
+        return "gnu"
+    if magic == tarfile.POSIX_MAGIC and member.type in b"\x0001234567xg":
+        return "pax"
+    return "other"
 
 
 def inspect_project(row, cached_formats):
@@ -164,9 +148,7 @@ def inspect_project(row, cached_formats):
     url = sdist["url"]
     kind = cached_formats.get(url)
     if kind is None:
-        kind = (
-            fetch(url, tar_format) if sdist["filename"].endswith(".tar.gz") else "other"
-        )
+        kind = tar_format(url) if sdist["filename"].endswith(".tar.gz") else "other"
     css_class, icon, label = STYLES[kind]
     return sdist | {
         "format": kind,

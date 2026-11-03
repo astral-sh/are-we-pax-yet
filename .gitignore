@@ -1,5 +1,5 @@
 /build/
 /.venv/
-/.sdist-formats-v1.sqlite*
+/.sdist-formats-v*.sqlite*
 __pycache__/
 .ruff_cache/

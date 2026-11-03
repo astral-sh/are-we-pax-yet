@@ -44,20 +44,20 @@ jobs:
         if: github.ref == 'refs/heads/main'
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: .sdist-formats-v1.sqlite
-          key: sdist-formats-v1-${{ github.run_id }}-${{ github.run_attempt }}
-          restore-keys: sdist-formats-v1-
+          path: .sdist-formats-v2.sqlite
+          key: sdist-formats-v2-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: sdist-formats-v2-
 
       - name: Build site
         if: github.ref == 'refs/heads/main'
         run: uv run --locked --script generate.py
 
       - name: Save sdist format cache
-        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('.sdist-formats-v1.sqlite') != '' }}
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('.sdist-formats-v2.sqlite') != '' }}
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: .sdist-formats-v1.sqlite
-          key: sdist-formats-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .sdist-formats-v2.sqlite
+          key: sdist-formats-v2-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload site
         if: github.ref == 'refs/heads/main'
