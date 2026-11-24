@@ -13,12 +13,18 @@
             <h1>Are we pax yet? 📦</h1>
             <p><a href="index.html">Back to the wheel</a> · <a href="full.html">Full 30-day results</a></p>
             <h2 id="non-pax-stats">Non-pax sdist stats</h2>
+            <p><strong>$non_pax_count non-pax or unclassified sdists.</strong></p>
+            $chart
             <p>
-                This table lists GNU tar, ZIP, and unclassified sdists from the surveyed projects in the
-                30-day PyPI download ranking, newest releases first. Age is measured in whole days from
+                Each point shows the count on the day of the survey. The count can rise or fall
+                as projects enter or leave the 30-day PyPI download ranking.
+                <a href="history.csv">Download daily counts (CSV)</a>
+            </p>
+            <p>
+                The table lists GNU tar, ZIP, and unclassified sdists from the latest survey,
+                newest releases first. Age is measured in whole days from
                 the first file upload PyPI lists for the release to the site's last update.
             </p>
-            <p><strong>$non_pax_count non-pax or unclassified sdists.</strong></p>
             <div class="table-scroll" role="region" aria-labelledby="non-pax-stats" tabindex="0">
                 <table class="results-table stats-table" aria-labelledby="non-pax-stats">
                     <thead>

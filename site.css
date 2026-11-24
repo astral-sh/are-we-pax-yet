@@ -157,6 +157,31 @@ a:hover {
     overflow-x: auto;
 }
 
+.history {
+    display: block;
+    width: calc(100% - 72px);
+    margin: 0 8px 1rem 64px;
+    overflow: visible;
+    fill: var(--text);
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+}
+
+.history line {
+    stroke: var(--table-border);
+}
+
+.history path {
+    fill: none;
+    stroke: var(--link);
+    stroke-width: 2;
+    stroke-linejoin: round;
+}
+
+.history circle {
+    fill: var(--link);
+}
+
 .results-table {
     width: 100%;
     min-width: 36rem;

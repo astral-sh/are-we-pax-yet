@@ -5,6 +5,7 @@
 # ///
 
 import argparse
+import csv
 import gzip
 import json
 import os
@@ -17,7 +18,7 @@ import zlib
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing, contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from functools import partial
 from html import escape
 from http.client import IncompleteRead
@@ -29,6 +30,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
 
+from svg_history import render_history
 from svg_wheel import generate_svg_wheel
 
 ROOT = Path(__file__).resolve().parent
@@ -37,6 +39,7 @@ RANKING_URL = (
     "top-pypi-packages-30-days.min.json"
 )
 PYPI_INDEX_URL = "https://pypi.org/simple/"
+SITE_URL = "https://astral-sh.github.io/are-we-pax-yet/"
 TO_CHART = 360
 WORKERS = 32
 CACHE_PATH = ROOT / ".sdist-formats-v2.sqlite"
@@ -358,12 +361,43 @@ def render_full_page(results, ranking_count, dates):
     )
 
 
-def render_stats_page(results, now, dates):
-    releases = [
-        (datetime.fromisoformat(package["released_at"]), rank, package)
-        for rank, (_, package) in enumerate(results, start=1)
-        if package is not None and package["format"] != "pax"
-    ]
+def published_history(now):
+    # Avoid reusing a cached response from before the previous deployment.
+    query = f"?t={int(now.timestamp())}"
+    try:
+        data = fetch(SITE_URL + "history.csv" + query, lambda body: body.read())
+    except HTTPError as error:
+        if error.code != 404:
+            raise
+        page = fetch(SITE_URL + "stats.html" + query, lambda body: body.read())
+        if (
+            b'id="non-pax-stats"' not in page
+            or not page.rstrip().endswith(b"</html>")
+            or b'href="history.csv"' in page
+        ):
+            raise RuntimeError("Cannot initialize missing history.csv") from error
+        return {}
+
+    rows = csv.reader(data.decode("ascii").splitlines(), strict=True)
+    if next(rows, None) != ["date", "count"]:
+        raise ValueError("Invalid history.csv header")
+    history = {}
+    for day, count in rows:
+        observed = date.fromisoformat(day)
+        if (
+            observed.isoformat() != day
+            or observed > now.date()
+            or (history and observed <= next(reversed(history)))
+            or not count.isdecimal()
+        ):
+            raise ValueError(f"Invalid history.csv row: {day},{count}")
+        history[observed] = int(count)
+    if not history:
+        raise ValueError("Empty history.csv")
+    return history
+
+
+def render_stats_page(releases, now, dates, history):
     releases.sort(key=lambda release: release[0], reverse=True)
     rows = []
     for released_at, rank, package in releases:
@@ -381,12 +415,15 @@ def render_stats_page(results, now, dates):
         )
     return Template((ROOT / "stats.html").read_text(encoding="utf-8")).substitute(
         non_pax_count=f"{len(releases):,}",
+        chart=render_history(history),
         rows="\n".join(rows),
         **dates,
     )
 
 
 def write_site(results, ranking_count, number, output):
+    preview = number is not None
+    number = number or TO_CHART
     packages = [package for _, package in results if package is not None][:number]
     if len(packages) < number:
         raise RuntimeError(
@@ -423,7 +460,14 @@ def write_site(results, ranking_count, number, output):
         **dates,
     )
     full = render_full_page(results, ranking_count, dates)
-    stats = render_stats_page(results, now, dates)
+    releases = [
+        (datetime.fromisoformat(package["released_at"]), rank, package)
+        for rank, (_, package) in enumerate(results, start=1)
+        if package is not None and package["format"] != "pax"
+    ]
+    history = {} if preview else published_history(now)
+    history[now.date()] = len(releases)
+    stats = render_stats_page(releases, now, dates, history)
     wheel_data = [
         {key: value for key, value in package.items() if key != "released_at"}
         for package in packages
@@ -433,6 +477,10 @@ def write_site(results, ranking_count, number, output):
     (output / "index.html").write_text(index, encoding="utf-8")
     (output / "full.html").write_text(full, encoding="utf-8")
     (output / "stats.html").write_text(stats, encoding="utf-8")
+    with (output / "history.csv").open("w", encoding="ascii", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(("date", "count"))
+        writer.writerows(history.items())
     (output / "results.json").write_text(
         json.dumps({"data": wheel_data, "last_update": now.isoformat()}, indent=2)
         + "\n",
@@ -467,7 +515,7 @@ def main():
         # wait for any worker still blocked on a network request.
         os._exit(130)
 
-    write_site(results, ranking_count, args.number or TO_CHART, args.output)
+    write_site(results, ranking_count, args.number, args.output)
 
 
 if __name__ == "__main__":
